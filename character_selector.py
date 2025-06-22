@@ -23,13 +23,13 @@ class RandomCharacterSelector:
         
         return {
             "required": {
+                "seed": ("INT", {
+                    "default": 0, 
+                    "min": 0, 
+                    "max": 0xffffffffffffffff
+                }),
                 "gender_filter": (["any", "girl", "boy"],),
-                # NOVO INPUT: Filtro de quantidade
-                # "INT" para um campo de número inteiro.
-                # default: 0 (significa sem limite)
-                # min: 0 (não pode ser negativo)
-                # max: um número bem grande para não limitar na prática
-                # step: o incremento ao usar as setas
+                # Filtro de quantidade
                 "quantity_limit": ("INT", {
                     "default": 0, 
                     "min": 0, 
@@ -50,11 +50,14 @@ class RandomCharacterSelector:
     # Define a categoria onde o node aparecerá no menu do ComfyUI
     CATEGORY = "Utils/Selectors"
 
-    # A assinatura da função agora inclui o novo parâmetro 'quantity_limit'
-    def select_character(self, gender_filter, quantity_limit):
+    # A assinatura da função agora inclui o parâmetro 'seed'
+    def select_character(self, seed, gender_filter, quantity_limit):
         """
         Lê o arquivo, aplica os filtros e seleciona um personagem aleatoriamente.
         """
+        # Define o seed para garantir reprodutibilidade
+        random.seed(seed)
+        
         try:
             with open(self.character_file, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
@@ -69,7 +72,7 @@ class RandomCharacterSelector:
             print("Aviso: O arquivo de personagens está vazio.")
             return ("", "")
         
-        # --- LÓGICA ATUALIZADA ---
+        # --- LÓGICA DE FILTRAGEM ---
         
         # 1. Aplica o filtro de quantidade PRIMEIRO
         # Se quantity_limit for maior que 0, pega apenas as primeiras N linhas.
@@ -93,7 +96,7 @@ class RandomCharacterSelector:
             print(f"Aviso: Nenhum personagem encontrado para os filtros: Gênero='{gender_filter}', Limite='{quantity_limit}'.")
             return ("", "")
 
-        # 3. Escolhe um personagem aleatoriamente da lista final
+        # 3. Escolhe um personagem aleatoriamente da lista final (usando o seed definido)
         selected_line = random.choice(filtered_characters)
         
         # A linha completa são as "full_tags"
