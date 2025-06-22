@@ -5,7 +5,7 @@ import random
 class RandomCharacterSelector:
     """
     Um node customizado para o ComfyUI que seleciona aleatoriamente um personagem
-    de um arquivo de texto, com um filtro opcional por gênero (1girl/1boy).
+    de um arquivo de texto, com filtros opcionais por gênero (1girl/1boy) e quantidade.
     """
 
     def __init__(self):
@@ -24,6 +24,18 @@ class RandomCharacterSelector:
         return {
             "required": {
                 "gender_filter": (["any", "girl", "boy"],),
+                # NOVO INPUT: Filtro de quantidade
+                # "INT" para um campo de número inteiro.
+                # default: 0 (significa sem limite)
+                # min: 0 (não pode ser negativo)
+                # max: um número bem grande para não limitar na prática
+                # step: o incremento ao usar as setas
+                "quantity_limit": ("INT", {
+                    "default": 0, 
+                    "min": 0, 
+                    "max": 1000000, 
+                    "step": 10
+                }),
             },
         }
 
@@ -38,39 +50,50 @@ class RandomCharacterSelector:
     # Define a categoria onde o node aparecerá no menu do ComfyUI
     CATEGORY = "Utils/Selectors"
 
-    def select_character(self, gender_filter):
+    # A assinatura da função agora inclui o novo parâmetro 'quantity_limit'
+    def select_character(self, gender_filter, quantity_limit):
         """
-        Lê o arquivo, filtra os personagens e seleciona um aleatoriamente.
+        Lê o arquivo, aplica os filtros e seleciona um personagem aleatoriamente.
         """
         try:
             with open(self.character_file, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
         except FileNotFoundError:
             print(f"Aviso: Arquivo de personagem não encontrado em {self.character_file}")
-            return ("", "") # Retorna vazio se o arquivo não existir
+            return ("", "")
 
         # Remove linhas em branco e espaços extras
-        characters = [line.strip() for line in lines if line.strip()]
+        all_characters = [line.strip() for line in lines if line.strip()]
 
-        if not characters:
+        if not all_characters:
             print("Aviso: O arquivo de personagens está vazio.")
             return ("", "")
+        
+        # --- LÓGICA ATUALIZADA ---
+        
+        # 1. Aplica o filtro de quantidade PRIMEIRO
+        # Se quantity_limit for maior que 0, pega apenas as primeiras N linhas.
+        # Caso contrário (se for 0), usa a lista inteira.
+        if quantity_limit > 0:
+            potential_characters = all_characters[:quantity_limit]
+        else:
+            potential_characters = all_characters
 
-        # Filtra a lista de personagens com base na seleção do usuário
+        # 2. Aplica o filtro de gênero na lista já reduzida
         filtered_characters = []
         if gender_filter == "any":
-            filtered_characters = characters
+            filtered_characters = potential_characters
         elif gender_filter == "girl":
-            filtered_characters = [char for char in characters if "1girl" in char]
+            filtered_characters = [char for char in potential_characters if "1girl" in char]
         elif gender_filter == "boy":
-            filtered_characters = [char for char in characters if "1boy" in char]
+            filtered_characters = [char for char in potential_characters if "1boy" in char]
 
-        # Se nenhum personagem corresponder ao filtro, retorna vazio
+        # Se nenhum personagem corresponder aos filtros combinados, retorna vazio
         if not filtered_characters:
-            print(f"Aviso: Nenhum personagem encontrado para o filtro '{gender_filter}'.")
+            print(f"Aviso: Nenhum personagem encontrado para os filtros: Gênero='{gender_filter}', Limite='{quantity_limit}'.")
             return ("", "")
 
-        # Escolhe um personagem aleatoriamente da lista filtrada
+        # 3. Escolhe um personagem aleatoriamente da lista final
         selected_line = random.choice(filtered_characters)
         
         # A linha completa são as "full_tags"
@@ -90,5 +113,5 @@ NODE_CLASS_MAPPINGS = {
 
 # Mapeamento para o nome que aparecerá na interface
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "RandomCharacterSelector": "Random chrakito Selector"
+    "RandomCharacterSelector": "Random charakito Selector"
 }
